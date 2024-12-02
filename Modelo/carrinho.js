@@ -1,103 +1,121 @@
-// Seu código original do carrinho permanece aqui
-let carrinho = [];
+// Recuperar o carrinho do localStorage ou inicializar vazio
+let carrinho = JSON.parse(localStorage.getItem("carrinho")) || [];
 
-// Função para adicionar itens ao carrinho
-function adicionarAoCarrinho(produto) {
-    const itemExistente = carrinho.find(item => item.nome === produto.nome);
+// Salvar o carrinho no localStorage
+function salvarCarrinho() {
+    localStorage.setItem("carrinho", JSON.stringify(carrinho));
+    updateCartCount(); // Atualizar a contagem do carrinho
+}
+
+// Atualizar a contagem de itens no carrinho
+function updateCartCount() {
+    const cartCount = document.querySelector(".cart-count");
+    const totalItens = carrinho.reduce((total, item) => total + item.quantidade, 0);
+    if (cartCount) cartCount.textContent = totalItens;
+}
+
+// Adicionar produto ao carrinho
+function adicionarAoCarrinho(nome, preco, imagem) {
+    if (!nome || !preco || !imagem) {
+        console.error("Erro ao adicionar produto ao carrinho: Parâmetros inválidos.", { nome, preco, imagem });
+        alert("Erro: Produto inválido. Não foi possível adicioná-lo ao carrinho.");
+        return;
+    }
+
+    const itemExistente = carrinho.find(item => item.nome === nome);
 
     if (itemExistente) {
-        itemExistente.quantidade += 1;
+        itemExistente.quantidade++;
     } else {
-        carrinho.push({ ...produto, quantidade: 1 });
+        carrinho.push({ nome, preco: parseFloat(preco), imagem, quantidade: 1 });
     }
 
     salvarCarrinho();
+    alert("Produto adicionado ao carrinho!");
+    atualizarCarrinhoVisual();
 }
 
-// Função para remover itens do carrinho
-function removerDoCarrinho(nomeProduto) {
-    carrinho = carrinho.filter(item => item.nome !== nomeProduto);
+// Remover item do carrinho
+function removerItem(nome) {
+    carrinho = carrinho.filter(item => item.nome !== nome);
     salvarCarrinho();
+    atualizarCarrinhoVisual();
 }
 
-// Função para salvar o carrinho no armazenamento local
-function salvarCarrinho() {
-    localStorage.setItem('carrinho', JSON.stringify(carrinho));
-}
-
-// Função para carregar o carrinho do armazenamento local
-function carregarCarrinho() {
-    const carrinhoSalvo = localStorage.getItem('carrinho');
-    if (carrinhoSalvo) {
-        carrinho = JSON.parse(carrinhoSalvo);
+// Alterar a quantidade de um produto
+function alterarQuantidade(nome, delta) {
+    const item = carrinho.find(item => item.nome === nome);
+    if (item) {
+        item.quantidade += delta;
+        if (item.quantidade <= 0) {
+            removerItem(nome); // Remove o item se a quantidade for zero ou negativa
+        } else {
+            salvarCarrinho();
+        }
     }
+    atualizarCarrinhoVisual();
 }
 
-// Função para calcular o total do carrinho
-function calcularTotal() {
-    return carrinho.reduce((total, item) => total + item.preco * item.quantidade, 0).toFixed(2);
-}
+// Atualizar a visualização do carrinho
+function atualizarCarrinhoVisual() {
+    const itensCarrinho = document.getElementById("itens-carrinho");
+    const totalElement = document.getElementById("total");
+    const promocaoElement = document.getElementById("promocao");
 
-// Função para exibir o carrinho na página
-function carregarItensCarrinho() {
-    const itensCarrinho = document.getElementById('itens-carrinho');
-    const totalElemento = document.getElementById('total');
+    if (!itensCarrinho || !totalElement) return;
 
-    itensCarrinho.innerHTML = '';
+    itensCarrinho.innerHTML = ""; // Limpa o carrinho visual
     let total = 0;
 
-    if (carrinho.length === 0) {
-        itensCarrinho.innerHTML = '<p>O carrinho está vazio.</p>';
-    } else {
-        carrinho.forEach(item => {
-            const itemDiv = document.createElement('div');
-            itemDiv.classList.add('item-carrinho');
-            itemDiv.innerHTML = `
-                <span>${item.nome} (x${item.quantidade})</span>
-                <span>R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-            `;
-            itensCarrinho.appendChild(itemDiv);
-            total += item.preco * item.quantidade;
-        });
-    }
-
-    totalElemento.textContent = total.toFixed(2);
-    return total.toFixed(2);
-}
-
-// Carregar o carrinho ao abrir a página
-document.addEventListener("DOMContentLoaded", carregarCarrinho);
-
-// Adição específica para o PayPal (mantendo o restante do código original)
-function configurarPaypal() {
-    const total = calcularTotal();
-
-    const paypalContainer = document.getElementById('paypal-button-container');
-    if (paypalContainer.children.length > 0) {
-        return; // Garante que não cria múltiplos botões
-    }
-
-    paypal.Buttons({
-        createOrder: function(data, actions) {
-            return actions.order.create({
-                purchase_units: [{
-                    amount: {
-                        value: total
-                    },
-                    description: "Compra de produtos - Aura Prateada",
-                    items: carrinho.map(item => ({
-                        name: item.nome,
-                        unit_amount: { value: item.preco.toFixed(2), currency_code: 'BRL' },
-                        quantity: item.quantidade
-                    }))
-                }]
-            });
-        },
-        onApprove: function(data, actions) {
-            return actions.order.capture().then(function(details) {
-                alert('Pagamento concluído com sucesso, ' + details.payer.name.given_name + '!');
-                finalizarCompra();
-            });
+    carrinho.forEach(item => {
+        // Verificar se o item tem todos os dados válidos
+        if (!item.nome || !item.preco || !item.imagem || isNaN(item.quantidade)) {
+            console.warn("Produto inválido encontrado no carrinho e será ignorado.", item);
+            return; // Ignorar produtos inválidos
         }
-    }).render('#paypal-button-container');
+
+        const itemElement = document.createElement("div");
+        itemElement.classList.add("item-carrinho");
+
+        const precoItem = item.nome === "Bracelete" ? "Brinde" : `R$ ${(item.preco * item.quantidade).toFixed(2)}`;
+        total += item.nome !== "Bracelete" ? item.preco * item.quantidade : 0;
+
+        itemElement.innerHTML = `
+            <img src="${item.imagem}" alt="${item.nome}" class="imagem-produto-carrinho">
+            <div>
+                <p>${item.nome}</p>
+                <p>Quantidade: 
+                    <button onclick="alterarQuantidade('${item.nome}', -1)">-</button>
+                    ${item.quantidade}
+                    <button onclick="alterarQuantidade('${item.nome}', 1)">+</button>
+                </p>
+                <p>Preço: ${precoItem}</p>
+            </div>
+        `;
+
+        itensCarrinho.appendChild(itemElement);
+    });
+
+    totalElement.textContent = total.toFixed(2);
+
+    // Promoção do bracelete
+    if (total >= 899 && !carrinho.find(item => item.nome === "Bracelete")) {
+        carrinho.push({
+            nome: "Bracelete",
+            preco: 0,
+            imagem: "imagens/bracelete.jpg",
+            quantidade: 1,
+        });
+        salvarCarrinho();
+    }
+
+    promocaoElement.textContent = total >= 899
+        ? "🎉 GANHE UM BRACELETE GRÁTIS! 🎉 Nas suas compras a partir de R$899,00"
+        : "";
 }
+
+// Configurar eventos e inicializar o carrinho
+document.addEventListener("DOMContentLoaded", () => {
+    updateCartCount();
+    atualizarCarrinhoVisual();
+});

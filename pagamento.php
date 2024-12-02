@@ -37,22 +37,34 @@
             itensCarrinho.innerHTML = '';
             let total = 0;
 
-            // Supondo que você tem uma variável `carrinho` que guarda os itens
+            // Verifique se o carrinho está salvo no localStorage ou defina um carrinho vazio
+            let carrinho = JSON.parse(localStorage.getItem('carrinho')) || [];
+
+            console.log("Carrinho:", carrinho); // Verificar se o carrinho está sendo carregado corretamente
+
+            // Se o carrinho estiver vazio
             if (carrinho.length === 0) {
                 itensCarrinho.innerHTML = '<p>O carrinho está vazio.</p>';
             } else {
+                // Exibe os itens do carrinho e calcula o total
                 carrinho.forEach(item => {
-                    const itemDiv = document.createElement('div');
-                    itemDiv.classList.add('item-carrinho');
-                    itemDiv.innerHTML = `
-                        <span>${item.nome} (x${item.quantidade})</span>
-                        <span>R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
-                    `;
-                    itensCarrinho.appendChild(itemDiv);
-                    total += item.preco * item.quantidade;
+                    // Garantir que o item tenha propriedades válidas
+                    if (item.nome && item.quantidade && item.preco) {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.classList.add('item-carrinho');
+                        itemDiv.innerHTML = `
+                            <span>${item.nome} (x${item.quantidade})</span>
+                            <span>R$ ${(item.preco * item.quantidade).toFixed(2)}</span>
+                        `;
+                        itensCarrinho.appendChild(itemDiv);
+                        total += item.preco * item.quantidade;
+                    } else {
+                        console.warn("Item inválido encontrado:", item); // Aviso caso algum item tenha dados inválidos
+                    }
                 });
             }
 
+            // Atualiza o total
             totalElemento.textContent = total.toFixed(2);
         }
 
